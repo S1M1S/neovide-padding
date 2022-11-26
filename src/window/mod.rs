@@ -42,6 +42,7 @@ use crate::{
     frame::Frame,
     redraw_scheduler::REDRAW_SCHEDULER,
     renderer::Renderer,
+    renderer::WindowPadding,
     running_tracker::*,
     settings::{
         load_last_window_settings, save_window_geometry, PersistentWindowSettings, SETTINGS,
@@ -192,8 +193,16 @@ impl GlutinWindowWrapper {
     }
 
     pub fn draw_frame(&mut self, dt: f32) {
+        let window_settings = SETTINGS.get::<WindowSettings>();
         let window = self.windowed_context.window();
         let mut font_changed = false;
+
+        let window_padding = WindowPadding {
+            top: window_settings.padding_top,
+            left: window_settings.padding_left,
+            right: window_settings.padding_right,
+            bottom: window_settings.padding_bottom,
+        };
 
         if REDRAW_SCHEDULER.should_draw() || SETTINGS.get::<WindowSettings>().no_idle {
             font_changed = self.renderer.draw_frame(self.skia_renderer.canvas(), dt);
@@ -231,7 +240,12 @@ impl GlutinWindowWrapper {
             font_changed = false;
         }
 
-        if self.saved_inner_size != new_size || font_changed {
+        let padding_changed = window_padding != self.renderer.window_padding;
+        if padding_changed {
+            self.renderer.handle_window_padding_update(window_padding);
+        }
+
+        if self.saved_inner_size != new_size || font_changed || padding_changed {
             self.saved_inner_size = new_size;
             self.handle_new_grid_size(new_size);
             self.skia_renderer.resize(&self.windowed_context);
@@ -239,10 +253,19 @@ impl GlutinWindowWrapper {
     }
 
     fn handle_new_grid_size(&mut self, new_size: PhysicalSize<u32>) {
+        let window_padding = self.renderer.window_padding;
+        let window_padding_width = window_padding.left + window_padding.right;
+        let window_padding_height = window_padding.top + window_padding.bottom;
+
+        let content_size = PhysicalSize {
+            width: new_size.width - window_padding_width,
+            height: new_size.height - window_padding_height,
+        };
+
         let grid_size = self
             .renderer
             .grid_renderer
-            .convert_physical_to_grid(new_size);
+            .convert_physical_to_grid(content_size);
 
         // Have a minimum size
         if grid_size.width < MIN_WINDOW_WIDTH || grid_size.height < MIN_WINDOW_HEIGHT {
