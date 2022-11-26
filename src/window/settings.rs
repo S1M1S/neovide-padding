@@ -39,10 +39,10 @@ impl Default for WindowSettings {
             touch_drag_timeout: 0.17,
             background_color: "".to_string(),
             confirm_quit: true,
-            padding_top: 0,
-            padding_left: 0,
-            padding_right: 0,
-            padding_bottom: 0,
+            padding_top: 20,
+            padding_left: 20,
+            padding_right: 20,
+            padding_bottom: 20,
         }
     }
 }
